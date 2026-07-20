@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# ==========================================================
+# FinCrime Regulatory Intelligence (FRI)
+# ==========================================================
+
+# ChromaDB Vector Store
+vector_store/
+
+# Application Logs
+logs/
+
+# Generated Reports
+reports/*.pdf
+reports/*.docx
+reports/*.xlsx
+
+# Local SQLite Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Settings (Optional)
+.vscode/settings.json
