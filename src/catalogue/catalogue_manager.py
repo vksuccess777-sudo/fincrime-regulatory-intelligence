@@ -2,13 +2,14 @@
 FRI - Knowledge Catalogue Manager
 
 Sprint 2
-Deliverable D2
+Deliverable D5
 """
 
 from __future__ import annotations
 
 from typing import Dict, List
 
+from src.catalogue.catalogue_store import CatalogueStore
 from src.catalogue.exceptions import (
     DuplicateDocumentError,
     DuplicateSourceError,
@@ -23,9 +24,25 @@ class CatalogueManager:
     Central registry for regulatory knowledge.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, store: CatalogueStore | None = None) -> None:
+
+        self._store = store
+
         self._sources: Dict[str, SourceDefinition] = {}
         self._documents: Dict[str, DocumentMetadata] = {}
+
+        if self._store is not None:
+            sources, documents = self._store.load()
+
+            self._sources = {
+                source.identifier: source
+                for source in sources
+            }
+
+            self._documents = {
+                document.document_id: document
+                for document in documents
+            }
 
     # ---------------------------------------------------------
     # Source Management
@@ -39,6 +56,8 @@ class CatalogueManager:
             )
 
         self._sources[source.identifier] = source
+
+        self._save()
 
     def get_source(self, identifier: str) -> SourceDefinition | None:
         return self._sources.get(identifier)
@@ -64,11 +83,27 @@ class CatalogueManager:
 
         self._documents[document.document_id] = document
 
+        self._save()
+
     def get_document(self, document_id: str) -> DocumentMetadata | None:
         return self._documents.get(document_id)
 
     def list_documents(self) -> List[DocumentMetadata]:
         return list(self._documents.values())
+
+    # ---------------------------------------------------------
+    # Persistence
+    # ---------------------------------------------------------
+
+    def _save(self) -> None:
+
+        if self._store is None:
+            return
+
+        self._store.save(
+            self.list_sources(),
+            self.list_documents(),
+        )
 
     # ---------------------------------------------------------
     # Statistics
