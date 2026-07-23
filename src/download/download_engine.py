@@ -1,74 +1,77 @@
 """
-Download Engine for FRI.
+download_engine.py
 
-Sprint 4 D1 introduces the orchestration framework only.
+Download Engine for the FinCrime Regulatory Intelligence (FRI) platform.
 
-Responsibilities:
-    - Validate DocumentMetadata objects
-    - Validate publication URLs
-    - Provide a stable public API for future download components
+The DownloadEngine orchestrates the document download workflow.
 
-Future Sprint 4 Deliverables:
-    D2 - HTTP Downloader
-    D3 - File Storage Manager
-    D4 - Integrity Validation
-    D5 - Catalogue Integration
+Responsibilities
+----------------
+1. Validate the supplied DocumentMetadata.
+2. Select the appropriate downloader.
+3. Delegate the download.
+4. Return a DownloadResult.
+
+The DownloadEngine intentionally does NOT:
+
+- perform HTTP requests directly
+- save files
+- calculate hashes
+- update the catalogue
 """
+
+from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from src.models.document_metadata import DocumentMetadata
-
+from src.download.download_result import DownloadResult
 from src.download.exceptions import (
     DownloadError,
-    InvalidDownloadURLException,
     DownloadNotSupportedException,
+    InvalidDownloadURLException,
 )
+from src.download.http_downloader import HTTPDownloader
+from src.models.document_metadata import DocumentMetadata
 
 
 class DownloadEngine:
     """
-    Orchestrates the document download workflow.
-
-    At Sprint 4 D1 this engine performs validation only.
-    Actual downloading will be implemented in later deliverables.
+    Coordinates document downloads.
     """
 
-    SUPPORTED_SCHEMES = {"http", "https"}
+    def __init__(self) -> None:
+        self._http_downloader = HTTPDownloader()
 
-    def download(self, document: DocumentMetadata) -> DocumentMetadata:
+    def download(self, document: DocumentMetadata) -> DownloadResult:
         """
-        Validate a document before download.
+        Download the supplied regulatory document.
 
         Parameters
         ----------
-        document : DocumentMetadata
-            Metadata describing the document.
+        document:
+            Metadata describing the regulatory publication.
 
         Returns
         -------
-        DocumentMetadata
-            The validated document metadata.
-
-        Raises
-        ------
-        DownloadError
-            If the supplied object is not a DocumentMetadata instance.
-        InvalidDownloadURLException
-            If the publication URL is missing or invalid.
-        DownloadNotSupportedException
-            If the URL scheme is unsupported.
+        DownloadResult
         """
 
         self._validate_document(document)
-        self._validate_publication_url(document.publication_url)
 
-        # Sprint 4 D2 will perform the actual download.
-        return document
+        downloader = self._select_downloader(
+            document.publication_url
+        )
 
-    def _validate_document(self, document: DocumentMetadata) -> None:
+        return downloader.download(
+            document.publication_url
+        )
+
+    @staticmethod
+    def _validate_document(
+        document: DocumentMetadata,
+    ) -> None:
         """
-        Validate the supplied DocumentMetadata object.
+        Validate the supplied document metadata.
         """
 
         if not isinstance(document, DocumentMetadata):
@@ -76,29 +79,37 @@ class DownloadEngine:
                 "Expected a DocumentMetadata instance."
             )
 
-    def _validate_publication_url(self, publication_url: str) -> None:
+        if not document.publication_url:
+            raise InvalidDownloadURLException(
+                "publication_url cannot be empty."
+            )
+
+    def _select_downloader(
+        self,
+        url: str,
+    ) -> HTTPDownloader:
         """
-        Validate the publication URL.
+        Select the downloader based on URL scheme.
+
+        Currently supported:
+
+            http
+            https
+
+        Future:
+
+            ftp
+            s3
+            sharepoint
         """
 
-        if publication_url is None:
-            raise InvalidDownloadURLException(
-                "Publication URL is missing."
-            )
+        parsed = urlparse(url)
 
-        if not publication_url.strip():
-            raise InvalidDownloadURLException(
-                "Publication URL cannot be empty."
-            )
+        scheme = parsed.scheme.lower()
 
-        parsed = urlparse(publication_url)
+        if scheme in ("http", "https"):
+            return self._http_downloader
 
-        if parsed.scheme.lower() not in self.SUPPORTED_SCHEMES:
-            raise DownloadNotSupportedException(
-                f"Unsupported download protocol: '{parsed.scheme}'."
-            )
-
-        if not parsed.netloc:
-            raise InvalidDownloadURLException(
-                "Publication URL is invalid."
-            )
+        raise DownloadNotSupportedException(
+            f"Unsupported download protocol '{scheme}'."
+        )
