@@ -4,34 +4,15 @@ Processing Pipeline
 Coordinates the document processing workflow.
 
 Sprint:
-    Sprint 5 - D3
-
-Responsibilities
-----------------
-- Select the correct parser.
-- Parse the document.
-- Clean extracted text.
-- Return a cleaned ParserResult.
-
-Notes
------
-This class orchestrates processing only.
-
-It intentionally performs NO:
-
-- PDF parsing
-- Text cleaning
-- Structure detection
-- Chunk generation
-
-Those responsibilities belong to dedicated classes.
+    Sprint 5 - D4
 """
 
-from pathlib import Path
 from dataclasses import replace
+from pathlib import Path
 
 from src.processing.parser_factory import ParserFactory
 from src.processing.parser_result import ParserResult
+from src.processing.structure_detector import StructureDetector
 from src.processing.text_cleaner import TextCleaner
 
 
@@ -42,6 +23,7 @@ class ProcessingPipeline:
 
     def __init__(self) -> None:
         self._cleaner = TextCleaner()
+        self._structure_detector = StructureDetector()
 
     def process(
         self,
@@ -49,7 +31,16 @@ class ProcessingPipeline:
         file_path: Path,
     ) -> ParserResult:
         """
-        Processes a document and returns a cleaned ParserResult.
+        Processes a document.
+
+        Workflow:
+            Parse
+            ↓
+            Clean
+            ↓
+            Detect Structure
+            ↓
+            Return cleaned ParserResult
         """
 
         parser = ParserFactory.get_parser(file_path)
@@ -63,6 +54,13 @@ class ProcessingPipeline:
             self._cleaner.clean(page)
             for page in raw_result.extracted_pages
         ]
+
+        # Structure detection
+        #
+        # The detected sections are intentionally not yet
+        # returned. Sprint 5 D5 will consume them for
+        # semantic chunk generation.
+        _ = self._structure_detector.detect(cleaned_pages)
 
         return replace(
             raw_result,
