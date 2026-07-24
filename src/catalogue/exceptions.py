@@ -3,6 +3,8 @@ FRI - Catalogue Exceptions
 
 Sprint 2
 Deliverable D2
+
+Updated: Sprint 4 D5 (Catalogue Integration) — added DocumentNotFoundError.
 """
 
 
@@ -20,3 +22,14 @@ class DuplicateDocumentError(CatalogueError):
 
 class UnknownSourceError(CatalogueError):
     """Raised when a referenced source does not exist."""
+
+
+class DocumentNotFoundError(CatalogueError):
+    """
+    Raised when an operation references a document_id that is not
+    present in the catalogue.
+
+    Used by update_after_download() — updating a document that was
+    never registered indicates a broken upstream flow (discovery/
+    registration was skipped), not a normal case to silently ignore.
+    """
