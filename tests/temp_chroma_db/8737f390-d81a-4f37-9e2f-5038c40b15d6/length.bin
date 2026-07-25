@@ -1,0 +1,10 @@
+11, 1)) << 40)
+     | (instr('123456789ABCDEF', substr(hex(seq_id), -12, 1)) << 44)
+     | (instr('123456789ABCDEF', substr(hex(seq_id), -13, 1)) << 48)
+     | (instr('123456789ABCDEF', substr(hex(seq_id), -14, 1)) << 52)
+     | (instr('123456789ABCDEF', substr(hex(seq_id), -15, 1)) << 56)
+     | (instr('123456789ABCDEF', substr(hex(seq_id), -16, 1)) << 60)
+    )
+);
+
+ALTER TABLE max_seq_id DROP CO
