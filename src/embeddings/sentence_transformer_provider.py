@@ -1,10 +1,8 @@
 """
-Sentence Transformer Provider
-
-Embedding provider backed by Sentence Transformers.
+Sentence Transformer embedding provider.
 
 Sprint:
-    Sprint 6 - D2
+    Sprint 6
 """
 
 from __future__ import annotations
@@ -18,32 +16,30 @@ from src.processing.document_chunk import DocumentChunk
 
 class SentenceTransformerProvider(EmbeddingProvider):
     """
-    Embedding provider using Sentence Transformers.
+    Embedding provider backed by Sentence Transformers.
     """
 
     DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
 
     def __init__(
         self,
-        model_name: str | None = None,
+        model_name: str = DEFAULT_MODEL,
     ) -> None:
-        """
-        Initialise the embedding model.
-
-        Args:
-            model_name:
-                Optional Sentence Transformer model name.
-        """
-
-        self._model_name = model_name or self.DEFAULT_MODEL
-        self._model = SentenceTransformer(self._model_name)
+        self._model_name = model_name
+        self._model = SentenceTransformer(model_name)
 
     @property
     def model_name(self) -> str:
+        """
+        Return the embedding model name.
+        """
         return self._model_name
 
     @property
     def dimension(self) -> int:
+        """
+        Return the embedding dimension.
+        """
         return self._model.get_sentence_embedding_dimension()
 
     def embed(
@@ -51,22 +47,22 @@ class SentenceTransformerProvider(EmbeddingProvider):
         chunk: DocumentChunk,
     ) -> EmbeddingResult:
         """
-        Generate an embedding for a single document chunk.
+        Embed a single document chunk.
         """
 
         vector = self._model.encode(
             chunk.text,
-            convert_to_numpy=True,
             normalize_embeddings=True,
-        ).tolist()
+        )
 
         return EmbeddingResult(
             chunk_id=chunk.chunk_id,
-            vector=vector,
+            vector=vector.tolist(),
+            dimension=self.dimension,
             model_name=self.model_name,
-            dimension=len(vector),
             metadata={
                 "provider": "sentence-transformers",
+                **chunk.metadata,
             },
         )
 
@@ -75,14 +71,14 @@ class SentenceTransformerProvider(EmbeddingProvider):
         chunks: list[DocumentChunk],
     ) -> list[EmbeddingResult]:
         """
-        Generate embeddings for multiple chunks.
+        Embed multiple document chunks.
         """
 
-        texts = [chunk.text for chunk in chunks]
+        if not chunks:
+            return []
 
         vectors = self._model.encode(
-            texts,
-            convert_to_numpy=True,
+            [chunk.text for chunk in chunks],
             normalize_embeddings=True,
         )
 
@@ -90,11 +86,27 @@ class SentenceTransformerProvider(EmbeddingProvider):
             EmbeddingResult(
                 chunk_id=chunk.chunk_id,
                 vector=vector.tolist(),
+                dimension=self.dimension,
                 model_name=self.model_name,
-                dimension=len(vector),
                 metadata={
                     "provider": "sentence-transformers",
+                    **chunk.metadata,
                 },
             )
             for chunk, vector in zip(chunks, vectors)
         ]
+
+    def embed_query(
+        self,
+        question: str,
+    ) -> list[float]:
+        """
+        Embed a natural-language search query.
+        """
+
+        vector = self._model.encode(
+            question,
+            normalize_embeddings=True,
+        )
+
+        return vector.tolist()

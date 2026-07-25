@@ -1,15 +1,14 @@
 """
-Embedding Provider
-
-Defines the abstraction for embedding generation.
+Embedding provider abstraction.
 
 Sprint:
-    Sprint 6 - D1
+    Sprint 6 - D4
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 
 from src.embeddings.embedding_result import EmbeddingResult
 from src.processing.document_chunk import DocumentChunk
@@ -17,32 +16,21 @@ from src.processing.document_chunk import DocumentChunk
 
 class EmbeddingProvider(ABC):
     """
-    Abstract base class for embedding providers.
-
-    Concrete implementations may use:
-
-    - SentenceTransformers
-    - OpenAI
-    - Voyage AI
-    - BGE
-    - E5
-
-    The remainder of the application should depend only
-    on this abstraction.
+    Abstract interface for embedding providers.
     """
 
     @property
     @abstractmethod
     def model_name(self) -> str:
         """
-        Return the embedding model name.
+        Name of the embedding model.
         """
 
     @property
     @abstractmethod
     def dimension(self) -> int:
         """
-        Return the embedding dimension.
+        Embedding vector dimension.
         """
 
     @abstractmethod
@@ -51,7 +39,7 @@ class EmbeddingProvider(ABC):
         chunk: DocumentChunk,
     ) -> EmbeddingResult:
         """
-        Generate an embedding for a single document chunk.
+        Embed a single document chunk.
         """
 
     @abstractmethod
@@ -60,5 +48,14 @@ class EmbeddingProvider(ABC):
         chunks: list[DocumentChunk],
     ) -> list[EmbeddingResult]:
         """
-        Generate embeddings for multiple document chunks.
+        Embed multiple document chunks.
+        """
+
+    @abstractmethod
+    def embed_query(
+        self,
+        question: str,
+    ) -> list[float]:
+        """
+        Embed a natural-language query.
         """

@@ -4,48 +4,46 @@ Processing Pipeline
 Coordinates the document processing workflow.
 
 Sprint:
-    Sprint 5 - D5
+    Sprint 6 - D5
 """
+
+from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
 
-from src.processing.chunk_generator import ChunkGenerator
 from src.processing.parser_factory import ParserFactory
-from src.processing.parser_result import ParserResult
+from src.processing.processing_result import ProcessingResult
 from src.processing.structure_detector import StructureDetector
 from src.processing.text_cleaner import TextCleaner
 
 
 class ProcessingPipeline:
     """
-    Coordinates the complete document processing workflow.
-
-    Workflow
-
-        Parse
-          ↓
-        Clean
-          ↓
-        Detect Structure
-          ↓
-        Generate Semantic Chunks
-          ↓
-        Return cleaned ParserResult
+    Coordinates the complete processing workflow.
     """
 
     def __init__(self) -> None:
         self._cleaner = TextCleaner()
         self._structure_detector = StructureDetector()
-        self._chunk_generator = ChunkGenerator()
 
     def process(
         self,
         document_id: str,
         file_path: Path,
-    ) -> ParserResult:
+    ) -> ProcessingResult:
         """
-        Process a document through the complete pipeline.
+        Process a document.
+
+        Workflow
+
+        Parse
+            ↓
+        Clean
+            ↓
+        Detect Structure
+            ↓
+        Return ProcessingResult
         """
 
         parser = ParserFactory.get_parser(file_path)
@@ -60,22 +58,16 @@ class ProcessingPipeline:
             for page in raw_result.extracted_pages
         ]
 
-        sections = self._structure_detector.detect(
-            cleaned_pages
-        )
-
-        #
-        # Generate semantic chunks.
-        #
-        # Sprint 5 stores the generated chunks only within the
-        # pipeline execution. Sprint 6 will persist these chunks
-        # into the embedding/vector database.
-        #
-        _chunks = self._chunk_generator.generate(
-            sections
-        )
-
-        return replace(
+        cleaned_result = replace(
             raw_result,
             extracted_pages=cleaned_pages,
+        )
+
+        sections = self._structure_detector.detect(
+            cleaned_pages,
+        )
+
+        return ProcessingResult(
+            parser_result=cleaned_result,
+            sections=sections,
         )

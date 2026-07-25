@@ -4,7 +4,7 @@ Mock Embedding Provider
 Deterministic embedding provider used for testing.
 
 Sprint:
-    Sprint 6 - D1
+    Sprint 6
 """
 
 from __future__ import annotations
@@ -57,4 +57,19 @@ class MockEmbeddingProvider(EmbeddingProvider):
         return [
             self.embed(chunk)
             for chunk in chunks
+        ]
+
+    def embed_query(
+        self,
+        question: str,
+    ) -> list[float]:
+        """
+        Produce a deterministic embedding for a search query.
+        """
+
+        length = len(question)
+
+        return [
+            float((length + i) % 100) / 100.0
+            for i in range(self.dimension)
         ]

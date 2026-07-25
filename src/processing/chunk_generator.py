@@ -1,82 +1,48 @@
 """
-Semantic document chunk generator.
+Chunk Generator
 
-Transforms DocumentSection objects into immutable DocumentChunk
-instances suitable for embedding and semantic retrieval.
+Converts detected document sections into semantic document chunks.
+
+Sprint:
+    Sprint 6 - D5
 """
 
 from __future__ import annotations
 
-from typing import Iterable
-
 from src.processing.document_chunk import DocumentChunk
-from src.processing.document_section import DocumentSection
+from src.processing.processing_result import ProcessingResult
 
 
 class ChunkGenerator:
-    """Generate semantic chunks from document sections."""
-
-    def __init__(
-        self,
-        chunk_size: int = 1000,
-        overlap: int = 0,
-    ) -> None:
-
-        if chunk_size <= 0:
-            raise ValueError("chunk_size must be greater than zero.")
-
-        if overlap < 0:
-            raise ValueError("overlap cannot be negative.")
-
-        if overlap >= chunk_size:
-            raise ValueError(
-                "overlap must be smaller than chunk_size."
-            )
-
-        self._chunk_size = chunk_size
-        self._overlap = overlap
+    """
+    Generates semantic chunks from a ProcessingResult.
+    """
 
     def generate(
         self,
-        sections: Iterable[DocumentSection],
+        processing_result: ProcessingResult,
     ) -> list[DocumentChunk]:
+        """
+        Convert detected sections into document chunks.
+        """
+
+        parser_result = processing_result.parser_result
 
         chunks: list[DocumentChunk] = []
 
-        counter = 1
-
-        for section in sections:
-
-            text = section.content.strip()
-
-            if not text:
-                continue
-
-            start = 0
-
-            while start < len(text):
-
-                end = min(
-                    start + self._chunk_size,
-                    len(text),
+        for index, section in enumerate(processing_result.sections):
+            chunks.append(
+                DocumentChunk(
+                    chunk_id=f"{parser_result.document_id}-{index + 1}",
+                    text=section.content,
+                    page_start=section.start_page,
+                    page_end=section.end_page,
+                    section_title=section.title,
+                    metadata={
+                        "document_id": parser_result.document_id,
+                        "level": section.level,
+                    },
                 )
-
-                chunks.append(
-                    DocumentChunk(
-                        chunk_id=f"chunk-{counter:05d}",
-                        text=text[start:end],
-                        page_start=section.start_page,
-                        page_end=section.end_page,
-                        section_title=section.title,
-                        metadata={},
-                    )
-                )
-
-                counter += 1
-
-                if end == len(text):
-                    break
-
-                start = end - self._overlap
+            )
 
         return chunks

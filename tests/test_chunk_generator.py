@@ -1,138 +1,177 @@
-import pytest
+from pathlib import Path
 
 from src.processing.chunk_generator import ChunkGenerator
 from src.processing.document_section import DocumentSection
+from src.processing.parser_result import ParserResult
+from src.processing.processing_result import ProcessingResult
 
 
-def create_section(content: str, **kwargs):
-    defaults = {
-        "title": "Introduction",
-        "content": content,
-        "start_page": 1,
-        "end_page": 1,
-        "level": 1,
-    }
-
-    defaults.update(kwargs)
-
-    return DocumentSection(**defaults)
-
-
-def test_single_chunk_generation():
-    generator = ChunkGenerator(chunk_size=100)
-
-    chunks = generator.generate(
-        [create_section("Hello World")]
+def make_parser_result() -> ParserResult:
+    return ParserResult(
+        document_id="fatf-test",
+        local_path=Path("knowledge/fatf.pdf"),
+        parser_name="PDFParser",
+        parser_version="1.0",
+        page_count=2,
+        extracted_pages=[
+            "Page 1",
+            "Page 2",
+        ],
     )
 
-    assert len(chunks) == 1
-    assert chunks[0].text == "Hello World"
 
-
-def test_multiple_chunk_generation():
-    generator = ChunkGenerator(
-        chunk_size=10,
-        overlap=0,
+def make_processing_result(
+    sections: list[DocumentSection],
+) -> ProcessingResult:
+    return ProcessingResult(
+        parser_result=make_parser_result(),
+        sections=sections,
     )
 
-    chunks = generator.generate(
-        [create_section("A" * 35)]
+
+def make_section(
+    title: str,
+    content: str,
+    start_page: int,
+    end_page: int | None = None,
+    level: int = 1,
+) -> DocumentSection:
+    if end_page is None:
+        end_page = start_page
+
+    return DocumentSection(
+        title=title,
+        content=content,
+        start_page=start_page,
+        end_page=end_page,
+        level=level,
     )
 
-    assert len(chunks) == 4
 
-
-def test_overlap_generation():
-    generator = ChunkGenerator(
-        chunk_size=10,
-        overlap=2,
-    )
-
-    chunks = generator.generate(
-        [create_section("A" * 25)]
-    )
-
-    assert len(chunks) > 2
-
-
-def test_empty_section_skipped():
+def test_empty_processing_result():
     generator = ChunkGenerator()
 
-    chunks = generator.generate([])
+    result = make_processing_result([])
+
+    chunks = generator.generate(result)
 
     assert chunks == []
 
 
+def test_single_section_generates_single_chunk():
+    generator = ChunkGenerator()
+
+    result = make_processing_result(
+        [
+            make_section(
+                "Recommendation 10",
+                "Enhanced Due Diligence is required.",
+                4,
+            )
+        ]
+    )
+
+    chunks = generator.generate(result)
+
+    assert len(chunks) == 1
+
+    chunk = chunks[0]
+
+    assert chunk.chunk_id == "fatf-test-1"
+    assert chunk.section_title == "Recommendation 10"
+    assert chunk.text == "Enhanced Due Diligence is required."
+    assert chunk.page_start == 4
+    assert chunk.page_end == 4
+
+
+def test_multiple_sections_generate_multiple_chunks():
+    generator = ChunkGenerator()
+
+    result = make_processing_result(
+        [
+            make_section("One", "AAA", 1),
+            make_section("Two", "BBB", 2),
+            make_section("Three", "CCC", 3),
+        ]
+    )
+
+    chunks = generator.generate(result)
+
+    assert len(chunks) == 3
+
+
 def test_chunk_ids_are_unique():
-    generator = ChunkGenerator(
-        chunk_size=10,
-        overlap=0,
+    generator = ChunkGenerator()
+
+    result = make_processing_result(
+        [
+            make_section("One", "AAA", 1),
+            make_section("Two", "BBB", 2),
+        ]
     )
 
-    chunks = generator.generate(
-        [create_section("A" * 50)]
-    )
+    chunks = generator.generate(result)
 
-    ids = [c.chunk_id for c in chunks]
+    ids = [chunk.chunk_id for chunk in chunks]
 
     assert len(ids) == len(set(ids))
 
 
 def test_page_numbers_preserved():
-    generator = ChunkGenerator(
-        chunk_size=10,
-        overlap=0,
-    )
+    generator = ChunkGenerator()
 
-    chunks = generator.generate(
+    result = make_processing_result(
         [
-            create_section(
-                "A" * 30,
-                start_page=4,
-                end_page=6,
+            make_section(
+                "Recommendation 10",
+                "EDD",
+                start_page=7,
+                end_page=9,
             )
         ]
     )
 
-    for chunk in chunks:
-        assert chunk.page_start == 4
-        assert chunk.page_end == 6
+    chunk = generator.generate(result)[0]
+
+    assert chunk.page_start == 7
+    assert chunk.page_end == 9
 
 
-def test_invalid_chunk_size():
-    with pytest.raises(ValueError):
-        ChunkGenerator(chunk_size=0)
+def test_section_titles_preserved():
+    generator = ChunkGenerator()
 
-
-def test_invalid_overlap():
-    with pytest.raises(ValueError):
-        ChunkGenerator(
-            chunk_size=100,
-            overlap=100,
-        )
-
-
-def test_negative_overlap():
-    with pytest.raises(ValueError):
-        ChunkGenerator(
-            chunk_size=100,
-            overlap=-1,
-        )
-
-
-def test_multiple_sections():
-    generator = ChunkGenerator(
-        chunk_size=20,
-        overlap=0,
+    result = make_processing_result(
+        [
+            make_section("Recommendation 20", "SAR", 5),
+            make_section("Recommendation 24", "Beneficial Ownership", 6),
+        ]
     )
 
-    sections = [
-        create_section("A" * 25, title="One"),
-        create_section("B" * 25, title="Two"),
+    chunks = generator.generate(result)
+
+    titles = [chunk.section_title for chunk in chunks]
+
+    assert titles == [
+        "Recommendation 20",
+        "Recommendation 24",
     ]
 
-    chunks = generator.generate(sections)
 
-    titles = {c.section_title for c in chunks}
+def test_metadata_preserved():
+    generator = ChunkGenerator()
 
-    assert titles == {"One", "Two"}
+    result = make_processing_result(
+        [
+            make_section(
+                "Recommendation 10",
+                "EDD",
+                4,
+                level=2,
+            )
+        ]
+    )
+
+    chunk = generator.generate(result)[0]
+
+    assert chunk.metadata["document_id"] == "fatf-test"
+    assert chunk.metadata["level"] == 2

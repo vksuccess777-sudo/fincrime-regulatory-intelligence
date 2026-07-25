@@ -16,6 +16,14 @@ class FakeEmbeddingProvider:
     Simple embedding provider used for testing.
     """
 
+    @property
+    def model_name(self) -> str:
+        return "fake-model"
+
+    @property
+    def dimension(self) -> int:
+        return 3
+
     def embed(
         self,
         chunk: DocumentChunk,
@@ -24,7 +32,7 @@ class FakeEmbeddingProvider:
             chunk_id=chunk.chunk_id,
             vector=[1.0, 2.0, 3.0],
             dimension=3,
-            model_name="fake-model",
+            model_name=self.model_name,
             metadata=chunk.metadata,
         )
 
@@ -36,6 +44,12 @@ class FakeEmbeddingProvider:
             self.embed(chunk)
             for chunk in chunks
         ]
+
+    def embed_query(
+        self,
+        question: str,
+    ) -> list[float]:
+        return [1.0, 2.0, 3.0]
 
 
 def make_chunk(
@@ -108,10 +122,7 @@ def test_index_preserves_chunk_ids():
         k=2,
     )
 
-    ids = {
-        result.chunk_id
-        for result in results
-    }
+    ids = {result.chunk_id for result in results}
 
     assert ids == {"A", "B"}
 
