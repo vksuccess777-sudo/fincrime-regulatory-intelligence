@@ -3,22 +3,30 @@ Financial Crime Regulatory Intelligence
 Interactive CLI
 
 Sprint:
-    Sprint 7 - Final
+    Sprint 8 - D2
 """
 
 from __future__ import annotations
 
-from src.embeddings.sentence_transformer_provider import (
-    SentenceTransformerProvider,
+import sys
+from pathlib import Path
+
+# ---------------------------------------------------------------------
+# Allow execution via:
+#
+#     python scripts/ask.py
+#
+# by adding the project root to sys.path.
+# ---------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.bootstrap.application_bootstrap import (  # noqa: E402
+    ApplicationBootstrap,
 )
-from src.llm.groq_provider import GroqProvider
-from src.prompts.prompt_builder import PromptBuilder
-from src.rag.context_builder import ContextBuilder
-from src.retrieval.retrieval_engine import RetrievalEngine
-from src.services.question_answering_service import (
-    QuestionAnsweringService,
-)
-from src.vectorstore.chroma_vector_store import ChromaVectorStore
 
 
 def main() -> None:
@@ -29,21 +37,9 @@ def main() -> None:
     print("=" * 70)
     print()
 
-    embedding_provider = SentenceTransformerProvider()
+    bootstrap = ApplicationBootstrap()
 
-    vector_store = ChromaVectorStore()
-
-    retrieval_engine = RetrievalEngine(
-        embedding_provider=embedding_provider,
-        vector_store=vector_store,
-    )
-
-    qa_service = QuestionAnsweringService(
-        retrieval_engine=retrieval_engine,
-        context_builder=ContextBuilder(),
-        prompt_builder=PromptBuilder(),
-        llm_provider=GroqProvider(),
-    )
+    qa_service = bootstrap.question_answering_service()
 
     while True:
 
@@ -68,9 +64,7 @@ def main() -> None:
         )
 
         print("=" * 70)
-
         print(response.text)
-
         print("=" * 70)
 
         retrieved_chunks = response.metadata.get(
@@ -86,10 +80,17 @@ def main() -> None:
         )
 
         if provider == "System":
+
             print("Knowledge Source : None")
-            print("Status           : No regulatory evidence found.")
+            print(
+                "Status           : No regulatory evidence found."
+            )
+
         else:
-            print("Knowledge Source : Indexed Regulatory Corpus")
+
+            print(
+                "Knowledge Source : Indexed Regulatory Corpus"
+            )
 
     print("\nGoodbye.")
 
