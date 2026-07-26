@@ -149,7 +149,19 @@ def test_empty_retrieval_results():
         "Unknown regulation",
     )
 
-    assert "No supporting context available." in response.text
+    assert (
+        "No supporting regulatory evidence was found"
+        in response.text
+    )
+
+    assert response.metadata["provider"] == "System"
+    assert response.metadata["model"] == "Evidence Guard"
+    assert response.metadata["retrieved_chunks"] == 0
+    assert response.metadata["confidence"] == "None"
+
+    assert response.prompt_tokens == 0
+    assert response.completion_tokens == 0
+    assert response.total_tokens == 0
 
 
 def test_response_metadata():

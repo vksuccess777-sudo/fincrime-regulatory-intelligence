@@ -1,10 +1,3 @@
-"""
-Tests for PromptBuilder.
-
-Sprint:
-    Sprint 7 - D3
-"""
-
 from src.prompts.prompt_builder import PromptBuilder
 
 
@@ -12,8 +5,8 @@ def test_prompt_contains_system_prompt():
     builder = PromptBuilder()
 
     prompt = builder.build(
-        question="What is Enhanced Due Diligence?",
-        context="Example Context",
+        question="What is CDD?",
+        context="Customer Due Diligence context.",
     )
 
     assert "Financial Crime Regulatory Intelligence Assistant" in prompt
@@ -24,23 +17,21 @@ def test_prompt_contains_context():
 
     prompt = builder.build(
         question="Question",
-        context="Context Text",
+        context="Example Context",
     )
 
-    assert "Context Text" in prompt
+    assert "Example Context" in prompt
 
 
 def test_prompt_contains_question():
     builder = PromptBuilder()
 
-    question = "What is Recommendation 10?"
-
     prompt = builder.build(
-        question=question,
+        question="Example Question",
         context="Context",
     )
 
-    assert question in prompt
+    assert "Example Question" in prompt
 
 
 def test_prompt_contains_answer_section():
@@ -62,8 +53,7 @@ def test_empty_context():
         context="",
     )
 
-    assert "Question" in prompt
-    assert "REGULATORY CONTEXT" in prompt
+    assert "RETRIEVED REGULATORY CONTEXT" in prompt
 
 
 def test_empty_question():
@@ -74,7 +64,6 @@ def test_empty_question():
         context="Context",
     )
 
-    assert "Context" in prompt
     assert "USER QUESTION" in prompt
 
 
@@ -86,6 +75,24 @@ def test_prompt_contains_llm_rules():
         context="Context",
     )
 
-    assert "Answer ONLY using the supplied regulatory context." in prompt
+    # Core evidence-based rules
     assert "Never invent regulations." in prompt
     assert "Never fabricate citations." in prompt
+    assert "Never speculate." in prompt
+    assert "retrieved context is insufficient" in prompt
+
+    # Lens integration
+    assert "AUDITOR LENS" in prompt
+    assert "RISK LENS" in prompt
+    assert "CONTROL LENS" in prompt
+    assert "EXECUTIVE LENS" in prompt
+
+    # Structured response
+    assert "Regulatory Summary" in prompt
+    assert "Financial Crime Risks" in prompt
+    assert "Expected Controls" in prompt
+    assert "Suggested Audit Procedures" in prompt
+    assert "Executive Summary" in prompt
+    assert "References" in prompt
+    assert "Confidence" in prompt
+    assert "Disclaimer" in prompt
